@@ -232,11 +232,13 @@ impl<SE: crate::extensions::ShellExtensions> crate::Shell<SE> {
     /// # Arguments
     ///
     /// * `options` - The options to use opening the file.
+    /// * `access` - What the file is opened for.
     /// * `path` - The path to the file to open; may be relative to the shell's working directory.
     /// * `params` - Execution parameters.
     pub(crate) fn open_file(
         &self,
         options: &std::fs::OpenOptions,
+        access: crate::extensions::FileAccess,
         path: impl AsRef<Path>,
         params: &ExecutionParameters,
     ) -> Result<openfiles::OpenFile, std::io::Error> {
@@ -259,7 +261,9 @@ impl<SE: crate::extensions::ShellExtensions> crate::Shell<SE> {
             return Ok(open_file);
         }
 
-        Ok(options.open(path_to_open)?.into())
+        let file =
+            crate::extensions::FileOpener::open(&self.file_opener, &path_to_open, options, access)?;
+        Ok(file.into())
     }
 
     /// Replaces the shell's currently configured open files with the given set.

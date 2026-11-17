@@ -16,6 +16,8 @@ pub trait ShellExtensions: Clone + Default + Send + Sync + 'static {
     type ProcessLauncher: ProcessLauncher;
     /// Type of the task spawner implementation.
     type TaskSpawner: TaskSpawner;
+    /// Type of the file opener implementation.
+    type FileOpener: FileOpener;
 }
 
 /// Shell extensions implementation constructed from component types.
@@ -24,16 +26,18 @@ pub struct ShellExtensionsImpl<
     EF: ErrorFormatter = DefaultErrorFormatter,
     PL: ProcessLauncher = DefaultProcessLauncher,
     TS: TaskSpawner = DefaultTaskSpawner,
+    FO: FileOpener = DefaultFileOpener,
 > {
-    _marker: std::marker::PhantomData<(EF, PL, TS)>,
+    _marker: std::marker::PhantomData<(EF, PL, TS, FO)>,
 }
 
-impl<EF: ErrorFormatter, PL: ProcessLauncher, TS: TaskSpawner> ShellExtensions
-    for ShellExtensionsImpl<EF, PL, TS>
+impl<EF: ErrorFormatter, PL: ProcessLauncher, TS: TaskSpawner, FO: FileOpener> ShellExtensions
+    for ShellExtensionsImpl<EF, PL, TS, FO>
 {
     type ErrorFormatter = EF;
     type ProcessLauncher = PL;
     type TaskSpawner = TS;
+    type FileOpener = FO;
 }
 
 /// Default shell extensions implementation.
@@ -198,6 +202,53 @@ impl TaskSpawner for DefaultTaskSpawner {
         sys::tasks::spawn_blocking(future)
     }
 }
+
+/// What the shell is about to do with a file it opens.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FileAccess {
+    /// Read it (an input redirection, a sourced script, the history file).
+    Read,
+    /// Write it, creating it if need be (an output redirection).
+    Write,
+    /// Both (`<>`).
+    ReadWrite,
+}
+
+/// Trait for opening the files the shell itself opens: the targets of
+/// redirections, the scripts it sources, and its history file. (Not the
+/// files of the programs it launches, which open their own.)
+///
+/// By default, they are opened with [`std::fs::OpenOptions::open`]. A host
+/// provides its own opener to decide which files a script may reach (for
+/// example, to confine its redirections to a directory, or to ask before one
+/// is overwritten), or to open them some other way.
+pub trait FileOpener: Clone + Default + Send + Sync + 'static {
+    /// Opens a file.
+    ///
+    /// An error opening it is reported as any failure to open the file is
+    /// (for a redirection, the command is not run).
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The absolute path of the file to open.
+    /// * `options` - How it is to be opened.
+    /// * `access` - What the shell is about to do with it.
+    fn open(
+        &self,
+        path: &std::path::Path,
+        options: &std::fs::OpenOptions,
+        access: FileAccess,
+    ) -> Result<std::fs::File, std::io::Error> {
+        let _ = access;
+        options.open(path)
+    }
+}
+
+/// Default file opener implementation: opens the file as asked.
+#[derive(Clone, Default)]
+pub struct DefaultFileOpener;
+
+impl FileOpener for DefaultFileOpener {}
 
 /// Trait for placeholder behavior (stub for future extension).
 pub trait PlaceholderBehavior: Clone + Default + Send + Sync + 'static {}

@@ -158,6 +158,9 @@ pub struct CreateOptions<SE: extensions::ShellExtensions = extensions::DefaultSh
     /// Starts the tasks the shell runs concurrently with itself.
     #[builder(default)]
     pub task_spawner: SE::TaskSpawner,
+    /// Opens the files the shell itself opens.
+    #[builder(default)]
+    pub file_opener: SE::FileOpener,
     /// Disallow overwriting regular files via output redirection.
     #[builder(default)]
     pub disallow_overwriting_regular_files_via_output_redirection: bool,
@@ -253,6 +256,7 @@ impl<SE: extensions::ShellExtensions> Default for Shell<SE> {
             error_formatter: SE::ErrorFormatter::default(),
             process_launcher: SE::ProcessLauncher::default(),
             task_spawner: SE::TaskSpawner::default(),
+            file_opener: SE::FileOpener::default(),
             builtin_states: builtins::BuiltinStates::default(),
             traps: traps::TrapHandlerConfig::default(),
             open_files: openfiles::OpenFiles::default(),

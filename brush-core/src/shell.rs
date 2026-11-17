@@ -69,6 +69,10 @@ pub struct Shell<SE: extensions::ShellExtensions = extensions::DefaultShellExten
     #[cfg_attr(feature = "serde", serde(skip, default = "default_task_spawner"))]
     task_spawner: SE::TaskSpawner,
 
+    /// Injected file opener.
+    #[cfg_attr(feature = "serde", serde(skip, default = "default_file_opener"))]
+    file_opener: SE::FileOpener,
+
     /// The builtins' state; see [`crate::ExecutionContext::state_mut`].
     #[cfg_attr(feature = "serde", serde(skip, default))]
     builtin_states: builtins::BuiltinStates,
@@ -169,6 +173,7 @@ impl<SE: extensions::ShellExtensions> Clone for Shell<SE> {
             error_formatter: self.error_formatter.clone(),
             process_launcher: self.process_launcher.clone(),
             task_spawner: self.task_spawner.clone(),
+            file_opener: self.file_opener.clone(),
             builtin_states: self.builtin_states.clone(),
             traps: self.traps.clone(),
             open_files: self.open_files.clone(),
@@ -239,6 +244,7 @@ impl<SE: extensions::ShellExtensions> Shell<SE> {
             error_formatter: options.error_formatter,
             process_launcher: options.process_launcher,
             task_spawner: options.task_spawner,
+            file_opener: options.file_opener,
             builtin_states: builtins::BuiltinStates::default(),
             open_files: openfiles::OpenFiles::new(),
             options: runtime_options,
@@ -399,6 +405,11 @@ impl<SE: extensions::ShellExtensions> Shell<SE> {
     /// itself.
     pub const fn task_spawner(&self) -> &SE::TaskSpawner {
         &self.task_spawner
+    }
+
+    /// Returns the opener of the files the shell itself opens.
+    pub const fn file_opener(&self) -> &SE::FileOpener {
+        &self.file_opener
     }
 
     /// Checks if the given string is a keyword reserved in this shell.
@@ -640,6 +651,11 @@ fn default_process_launcher<PL: extensions::ProcessLauncher>() -> PL {
 #[cfg(feature = "serde")]
 fn default_task_spawner<TS: extensions::TaskSpawner>() -> TS {
     TS::default()
+}
+
+#[cfg(feature = "serde")]
+fn default_file_opener<FO: extensions::FileOpener>() -> FO {
+    FO::default()
 }
 
 #[cfg(test)]

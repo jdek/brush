@@ -1835,8 +1835,19 @@ pub(crate) async fn setup_redirect(
 
                     let fd_num = specified_fd_num.unwrap_or(default_fd_if_unspecified);
 
+                    let access = match kind {
+                        ast::IoFileRedirectKind::Read | ast::IoFileRedirectKind::DuplicateInput => {
+                            extensions::FileAccess::Read
+                        }
+                        ast::IoFileRedirectKind::ReadAndWrite => extensions::FileAccess::ReadWrite,
+                        ast::IoFileRedirectKind::Write
+                        | ast::IoFileRedirectKind::Append
+                        | ast::IoFileRedirectKind::Clobber
+                        | ast::IoFileRedirectKind::DuplicateOutput => extensions::FileAccess::Write,
+                    };
+
                     let opened_file = shell
-                        .open_file(&options, &expanded_file_path, params)
+                        .open_file(&options, access, &expanded_file_path, params)
                         .map_err(|err| {
                             error::ErrorKind::RedirectionFailure(
                                 expanded_file_path.to_string_lossy().to_string(),
@@ -2005,7 +2016,12 @@ fn setup_redirect_output_and_error_to(
         .append(append);
 
     let stdout_file = shell
-        .open_file(&file_options, &abs_file_path, params)
+        .open_file(
+            &file_options,
+            extensions::FileAccess::Write,
+            &abs_file_path,
+            params,
+        )
         .map_err(|err| {
             error::ErrorKind::RedirectionFailure(
                 abs_file_path.to_string_lossy().to_string(),
